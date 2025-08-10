@@ -52,7 +52,7 @@ def test_news_collection():
         if recent_news:
             print("\n📋 Sample articles:")
             for i, article in enumerate(recent_news[:3]):
-                print(f"   {i+1}. {article['title'][:50]}...")
+                print(f"   {i+1}. {article.title[:50]}...")
         
         print("\n✅ News collection test complete!")
         
