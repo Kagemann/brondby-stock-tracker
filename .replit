@@ -1,8 +1,9 @@
 run = "python main.py"
-entrypoint = "main.py"
+modules = ["python-3.11", "nix"]
 
 [nix]
-channel = "stable-22_11"
+channel = "stable-25_05"
+packages = ["glibcLocales", "libxcrypt", "xcodebuild", "zlib"]
 
 [env]
 PYTHONPATH = "${REPL_HOME}"
@@ -21,3 +22,14 @@ syntax = "python"
 
 [languages.python3.languageServer]
 start = [ "pylsp" ]
+
+[deployment]
+run = ["sh", "-c", "python main.py"]
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
+
+[[ports]]
+localPort = 8050
+externalPort = 80
