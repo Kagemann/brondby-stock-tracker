@@ -489,24 +489,61 @@ class NewsTracker:
         return any(keyword.lower() in text_lower for keyword in self.keywords)
     
     def analyze_sentiment(self, text):
-        """Analyze sentiment of text using TextBlob"""
+        """Analyze sentiment of text using enhanced Danish keywords"""
         try:
-            # Clean text
-            text = re.sub(r'[^\w\s]', '', text)
+            # Clean text and convert to lowercase
+            text = re.sub(r'[^\w\sæøåÆØÅ]', ' ', text).lower()
             
-            # Create TextBlob object
-            blob = TextBlob(text)
+            # Danish positive keywords
+            positive_keywords = [
+                'sejr', 'vinder', 'vandt', 'fantastisk', 'fantastiske', 'stor', 'store', 'god', 'gode',
+                'glad', 'glade', 'lykkelig', 'lykkelige', 'fremragende', 'perfekt', 'perfekte',
+                'stærk', 'stærke', 'godt', 'god', 'gode', 'succes', 'succesfuld', 'succesfulde',
+                'fremgang', 'fremgangsrig', 'fremgangsrige', 'oprykning', 'mesterskab',
+                'champions league', 'europa league', 'pokal', 'trofæ', 'trofæer',
+                'mål', 'målscorer', 'assist', 'assister', 'clean sheet', 'nulstilling',
+                'forløsning', 'forløsende', 'tiltrængt', 'vigtig', 'vigtige', 'afgørende',
+                'kæmpe', 'kæmper', 'kæmpede', 'kæmpet', 'kæmper', 'kæmper', 'kæmper',
+                'stråler', 'strålende', 'brilliant', 'brilliante', 'genial', 'geniale',
+                'talent', 'talenter', 'lovende', 'fremtid', 'fremtidig', 'fremtidige'
+            ]
             
-            # Get polarity (-1 to 1, where -1 is negative, 1 is positive)
-            sentiment_score = blob.sentiment.polarity
+            # Danish negative keywords
+            negative_keywords = [
+                'nederlag', 'taber', 'tabte', 'dårlig', 'dårlige', 'skuffende', 'skuffet',
+                'ydmygelse', 'ydmyget', 'ydmygende', 'fadæse', 'katastrofe', 'katastrofal',
+                'mareridt', 'mareridts', 'problem', 'problemer', 'krise', 'kriser',
+                'svag', 'svage', 'svært', 'vanskelig', 'vanskelige', 'udfordring',
+                'udfordringer', 'mistillid', 'mistillid', 'kritik', 'kritiserer',
+                'ballade', 'hærværk', 'boykot', 'boykotter', 'protest', 'protester',
+                'skandale', 'skandaler', 'skuffelse', 'skuffet', 'frustreret',
+                'vred', 'vrede', 'rasende', 'forarget', 'forargelse', 'skam',
+                'pinlig', 'pinlige', 'flov', 'flove', 'bange', 'bekymret', 'bekymringer'
+            ]
             
-            # Categorize sentiment
-            if sentiment_score > 0.1:
+            # Count positive and negative matches
+            positive_count = sum(1 for word in positive_keywords if word in text)
+            negative_count = sum(1 for word in negative_keywords if word in text)
+            
+            # Calculate sentiment score (-1 to 1)
+            total_words = len(text.split())
+            if total_words > 0:
+                positive_ratio = positive_count / total_words
+                negative_ratio = negative_count / total_words
+                sentiment_score = positive_ratio - negative_ratio
+            else:
+                sentiment_score = 0.0
+            
+            # Categorize sentiment with more nuanced thresholds
+            if sentiment_score > 0.005:  # More sensitive threshold
                 sentiment_label = 'positive'
-            elif sentiment_score < -0.1:
+            elif sentiment_score < -0.005:
                 sentiment_label = 'negative'
             else:
                 sentiment_label = 'neutral'
+            
+            # Log for debugging
+            logger.debug(f"Sentiment analysis: score={sentiment_score:.4f}, label={sentiment_label}, positive={positive_count}, negative={negative_count}")
                 
             return sentiment_score, sentiment_label
             

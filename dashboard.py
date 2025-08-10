@@ -64,6 +64,61 @@ app.layout = html.Div([
         )
     ], style={'textAlign': 'center', 'margin': '20px'}),
     
+    # News Filtering and Sorting Controls
+    html.Div([
+        html.H4("News Controls", style={'textAlign': 'center', 'marginBottom': '15px'}),
+        html.Div([
+            # Sentiment Filter
+            html.Div([
+                html.Label("Filter by Sentiment:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                dcc.Dropdown(
+                    id='sentiment-filter',
+                    options=[
+                        {'label': 'All Sentiments', 'value': 'all'},
+                        {'label': 'Positive', 'value': 'positive'},
+                        {'label': 'Negative', 'value': 'negative'},
+                        {'label': 'Neutral', 'value': 'neutral'}
+                    ],
+                    value='all',
+                    style={'width': '150px'}
+                )
+            ], style={'display': 'inline-block', 'marginRight': '20px'}),
+            
+            # Sort Order
+            html.Div([
+                html.Label("Sort Order:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                dcc.Dropdown(
+                    id='sort-order',
+                    options=[
+                        {'label': 'Newest First', 'value': 'newest'},
+                        {'label': 'Oldest First', 'value': 'oldest'},
+                        {'label': 'Most Positive', 'value': 'positive'},
+                        {'label': 'Most Negative', 'value': 'negative'}
+                    ],
+                    value='newest',
+                    style={'width': '150px'}
+                )
+            ], style={'display': 'inline-block', 'marginRight': '20px'}),
+            
+            # Refresh Button
+            html.Div([
+                html.Button(
+                    '🔄 Refresh News',
+                    id='refresh-button',
+                    n_clicks=0,
+                    style={
+                        'backgroundColor': '#2E86AB',
+                        'color': 'white',
+                        'border': 'none',
+                        'padding': '10px 20px',
+                        'borderRadius': '5px',
+                        'cursor': 'pointer'
+                    }
+                )
+            ], style={'display': 'inline-block'})
+        ], style={'textAlign': 'center', 'marginBottom': '20px'})
+    ], style={'backgroundColor': '#f8f9fa', 'padding': '15px', 'borderRadius': '10px', 'margin': '10px'}),
+    
     # Main Content Grid
     html.Div([
         # Left Column
@@ -103,11 +158,7 @@ app.layout = html.Div([
         ], style={'width': '40%', 'display': 'inline-block', 'verticalAlign': 'top'})
     ]),
     
-    # Refresh Button
-    html.Div([
-        html.Button('Refresh Data', id='refresh-button', n_clicks=0,
-                   style={'backgroundColor': '#2E86AB', 'color': 'white', 'padding': '10px 20px', 'border': 'none', 'borderRadius': '5px', 'cursor': 'pointer'})
-    ], style={'textAlign': 'center', 'margin': '20px'}),
+
     
     # Hidden div for storing data
     html.Div(id='data-store', style={'display': 'none'}),
@@ -252,15 +303,34 @@ def update_sentiment_chart(days, n_clicks, n_intervals):
 @app.callback(
     Output('recent-news-list', 'children'),
     [Input('global-timeframe-dropdown', 'value'),
+     Input('sentiment-filter', 'value'),
+     Input('sort-order', 'value'),
      Input('refresh-button', 'n_clicks'),
      Input('interval-component', 'n_intervals')]
 )
-def update_recent_news(days, n_clicks, n_intervals):
+def update_recent_news(days, sentiment_filter, sort_order, n_clicks, n_intervals):
     # Convert days to hours for news API
     hours = days * 24
     data = get_api_data(f'/news/recent?hours={hours}')
     if data and data.get('articles'):
-        articles = data['articles'][:15]  # Show more articles
+        articles = data['articles']
+        
+        # Apply sentiment filter
+        if sentiment_filter != 'all':
+            articles = [article for article in articles if article.get('sentiment_label') == sentiment_filter]
+        
+        # Apply sorting
+        if sort_order == 'newest':
+            articles = sorted(articles, key=lambda x: x.get('timestamp', ''), reverse=True)
+        elif sort_order == 'oldest':
+            articles = sorted(articles, key=lambda x: x.get('timestamp', ''))
+        elif sort_order == 'positive':
+            articles = sorted(articles, key=lambda x: x.get('sentiment_score', 0), reverse=True)
+        elif sort_order == 'negative':
+            articles = sorted(articles, key=lambda x: x.get('sentiment_score', 0))
+        
+        # Limit to 15 articles for display
+        articles = articles[:15]
         
         news_items = []
         for article in articles:
@@ -279,16 +349,28 @@ def update_recent_news(days, n_clicks, n_intervals):
                 style={'color': '#2E86AB', 'textDecoration': 'none', 'fontWeight': 'bold'}
             )
             
+            # Add sentiment score display
+            sentiment_score = article.get('sentiment_score', 0)
+            sentiment_display = f"{article['sentiment_label'].title()} ({sentiment_score:.3f})"
+            
             news_items.append(html.Div([
                 html.H6(title_link, style={'margin': '5px 0'}),
                 html.P(f"Source: {article['source']}", style={'fontSize': '12px', 'color': '#666'}),
-                html.Span(f"Sentiment: {article['sentiment_label']}", 
+                html.Span(f"Sentiment: {sentiment_display}", 
                          style={'color': sentiment_color, 'fontSize': '12px'}),
                 html.Br(),
                 html.Small(f"Published: {article['timestamp'][:10] if article.get('timestamp') else 'Unknown'}", 
                           style={'color': '#999', 'fontSize': '10px'}),
                 html.Hr(style={'margin': '10px 0'})
             ]))
+        
+        # Add summary of filtered results
+        if sentiment_filter != 'all':
+            summary = html.Div([
+                html.P(f"Showing {len(articles)} {sentiment_filter} articles", 
+                      style={'fontSize': '12px', 'color': '#666', 'fontStyle': 'italic'})
+            ])
+            return [summary] + news_items
         
         return news_items
     
