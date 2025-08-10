@@ -252,10 +252,11 @@ class NewsTracker:
         """Scrape news from Bold.dk"""
         articles = []
         try:
-            # Try multiple Bold.dk URLs for better coverage
+            # Try multiple Bold.dk URLs for better coverage including club-specific pages
             urls = [
                 "https://bold.dk/",
                 "https://bold.dk/fodbold/nyheder/",
+                "https://bold.dk/fodbold/klubber/broendby-if/nyheder/",  # Brøndby specific news
                 "https://bold.dk/fodbold/nyheder/brondby-fadaese-ydmyget-i-island/"
             ]
             
@@ -269,10 +270,13 @@ class NewsTracker:
                     if response.status_code == 200:
                         soup = BeautifulSoup(response.content, 'html.parser')
                         
-                        # Look for Brøndby related news
-                        news_items = soup.find_all(['article', 'div'], class_=lambda x: x and any(word in x.lower() for word in ['news', 'article', 'post']))
+                        # Look for Brøndby related news - improved detection
+                        news_items = soup.find_all(['article', 'div', 'section'], class_=lambda x: x and any(word in x.lower() for word in ['news', 'article', 'post', 'content']))
                         
-                        for item in news_items[:20]:  # Check more items
+                        # Also look for any elements containing Brøndby keywords
+                        brondby_elements = soup.find_all(text=lambda text: text and any(keyword in text.lower() for keyword in ['brøndby', 'brondby', 'bif']))
+                        
+                        for item in news_items[:30]:  # Check more items
                             title_elem = item.find(['h1', 'h2', 'h3', 'h4'])
                             if title_elem:
                                 title = title_elem.get_text(strip=True)
@@ -301,6 +305,56 @@ class NewsTracker:
                             
         except Exception as e:
             logger.error(f"Error scraping Bold.dk news: {e}")
+        
+        return articles
+    
+    def get_latest_bold_brondby_articles(self):
+        """Specifically check for latest Brøndby articles on Bold.dk"""
+        articles = []
+        try:
+            url = "https://bold.dk/fodbold/klubber/broendby-if/nyheder/"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # Look for article links specifically
+                article_links = soup.find_all('a', href=True)
+                
+                for link in article_links[:15]:  # Check first 15 links
+                    href = link.get('href', '')
+                    title = link.get_text(strip=True)
+                    
+                    # Check if it's a Brøndby article and not already processed
+                    if (any(keyword in title.lower() for keyword in ['brøndby', 'brondby', 'bif']) and 
+                        '/fodbold/klubber/broendby-if/nyheder/' in href and
+                        len(title) > 10):
+                        
+                        # Make sure URL is complete
+                        if not href.startswith('http'):
+                            href = f"https://bold.dk{href}"
+                        
+                        # Get article description if available
+                        description = ""
+                        parent = link.find_parent()
+                        if parent:
+                            desc_elem = parent.find(['p', 'div'])
+                            if desc_elem:
+                                description = desc_elem.get_text(strip=True)[:200]
+                        
+                        articles.append({
+                            'title': title,
+                            'description': description,
+                            'url': href,
+                            'publishedAt': datetime.now(),
+                            'source': {'name': 'Bold.dk'}
+                        })
+                        
+        except Exception as e:
+            logger.error(f"Error getting latest Bold.dk Brøndby articles: {e}")
         
         return articles
     
@@ -506,7 +560,9 @@ class NewsTracker:
             rss_articles = self.get_rss_news()
             web_articles = self.get_web_scraped_news()
             
-            all_articles = api_articles + rss_articles + web_articles
+            # Add specific check for latest Bold.dk Brøndby articles
+            bold_articles = self.get_latest_bold_brondby_articles()
+            all_articles = api_articles + rss_articles + web_articles + bold_articles
             
             # If no real news found, use demo data as fallback
             if not all_articles:
