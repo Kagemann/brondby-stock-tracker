@@ -217,31 +217,64 @@ class NewsTracker:
             if response.status_code == 200:
                 soup = BeautifulSoup(response.content, 'html.parser')
                 
-                # Based on the search results, look for Brøndby-related content
-                # The site has articles like "Ham savner Brøndby helt vildt", "Stemningsboykot i Brøndby"
-                all_elements = soup.find_all(['div', 'article', 'section'])
+                # Look for all text elements containing Brøndby keywords
+                brondby_elements = soup.find_all(text=lambda text: text and any(keyword in text.lower() for keyword in ['brøndby', 'brondby', 'bif']))
                 
-                for element in all_elements:
-                    text = element.get_text(strip=True)
-                    if any(keyword in text.lower() for keyword in ['brøndby', 'brondby', 'bif']):
-                        # Look for headlines
-                        title_elem = element.find(['h1', 'h2', 'h3', 'h4', 'a'])
+                # Also look for article containers
+                article_containers = soup.find_all(['div', 'article', 'section', 'a'], class_=lambda x: x and any(word in x.lower() for word in ['news', 'article', 'post', 'item']))
+                
+                processed_titles = set()
+                
+                # Process text elements first
+                for element in brondby_elements:
+                    parent = element.parent
+                    if parent:
+                        # Look for title in parent or nearby elements
+                        title_elem = parent.find(['h1', 'h2', 'h3', 'h4', 'a'])
                         if title_elem:
                             title = title_elem.get_text(strip=True)
-                            if len(title) > 10 and self.is_relevant_article(title):
-                                link_elem = element.find('a')
+                            if (len(title) > 10 and 
+                                self.is_relevant_article(title) and 
+                                title not in processed_titles):
+                                
+                                link_elem = parent.find('a') if parent.name == 'a' else parent.find('a')
                                 url = link_elem.get('href') if link_elem else ''
                                 if url and not url.startswith('http'):
                                     url = f"https://www.tipsbladet.dk{url}"
                                 
                                 articles.append({
                                     'title': title,
-                                    'description': text[:200] + "..." if len(text) > 200 else text,
+                                    'description': element[:200] + "..." if len(element) > 200 else element,
                                     'url': url,
                                     'publishedAt': datetime.now(),
                                     'source': {'name': 'Tipsbladet'}
                                 })
-                                break  # Only take the first relevant article from each element
+                                processed_titles.add(title)
+                
+                # Process article containers
+                for container in article_containers[:20]:
+                    title_elem = container.find(['h1', 'h2', 'h3', 'h4'])
+                    if title_elem:
+                        title = title_elem.get_text(strip=True)
+                        if (len(title) > 10 and 
+                            self.is_relevant_article(title) and 
+                            title not in processed_titles):
+                            
+                            link_elem = container.find('a')
+                            url = link_elem.get('href') if link_elem else ''
+                            if url and not url.startswith('http'):
+                                url = f"https://www.tipsbladet.dk{url}"
+                            
+                            description = container.get_text(strip=True)[:200]
+                            
+                            articles.append({
+                                'title': title,
+                                'description': description,
+                                'url': url,
+                                'publishedAt': datetime.now(),
+                                'source': {'name': 'Tipsbladet'}
+                            })
+                            processed_titles.add(title)
                             
         except Exception as e:
             logger.error(f"Error scraping Tipsbladet news: {e}")
@@ -379,14 +412,49 @@ class NewsTracker:
                     if response.status_code == 200:
                         soup = BeautifulSoup(response.content, 'html.parser')
                         
-                        # Look for Brøndby related news
-                        news_items = soup.find_all(['article', 'div'], class_=lambda x: x and any(word in x.lower() for word in ['news', 'article', 'post']))
+                        # Look for all text elements containing Brøndby keywords
+                        brondby_elements = soup.find_all(text=lambda text: text and any(keyword in text.lower() for keyword in ['brøndby', 'brondby', 'bif']))
                         
-                        for item in news_items[:20]:  # Check more items
+                        # Also look for article containers
+                        news_items = soup.find_all(['article', 'div', 'section'], class_=lambda x: x and any(word in x.lower() for word in ['news', 'article', 'post', 'content']))
+                        
+                        processed_titles = set()
+                        
+                        # Process text elements first
+                        for element in brondby_elements:
+                            parent = element.parent
+                            if parent:
+                                # Look for title in parent or nearby elements
+                                title_elem = parent.find(['h1', 'h2', 'h3', 'h4', 'a'])
+                                if title_elem:
+                                    title = title_elem.get_text(strip=True)
+                                    if (len(title) > 10 and 
+                                        self.is_relevant_article(title) and 
+                                        title not in processed_titles):
+                                        
+                                        link_elem = parent.find('a') if parent.name == 'a' else parent.find('a')
+                                        article_url = link_elem.get('href') if link_elem else ''
+                                        if article_url and not article_url.startswith('http'):
+                                            article_url = f"https://sport.tv2.dk{article_url}"
+                                        
+                                        articles.append({
+                                            'title': title,
+                                            'description': element[:200] + "..." if len(element) > 200 else element,
+                                            'url': article_url,
+                                            'publishedAt': datetime.now(),
+                                            'source': {'name': 'TV2 Sport'}
+                                        })
+                                        processed_titles.add(title)
+                        
+                        # Process article containers
+                        for item in news_items[:25]:  # Check more items
                             title_elem = item.find(['h1', 'h2', 'h3', 'h4'])
                             if title_elem:
                                 title = title_elem.get_text(strip=True)
-                                if self.is_relevant_article(title):
+                                if (len(title) > 10 and 
+                                    self.is_relevant_article(title) and 
+                                    title not in processed_titles):
+                                    
                                     link_elem = item.find('a')
                                     article_url = link_elem.get('href') if link_elem else ''
                                     if article_url and not article_url.startswith('http'):
@@ -404,6 +472,7 @@ class NewsTracker:
                                         'publishedAt': datetime.now(),
                                         'source': {'name': 'TV2 Sport'}
                                     })
+                                    processed_titles.add(title)
                                     
                 except Exception as e:
                     logger.error(f"Error scraping TV2 Sport URL {url}: {e}")
