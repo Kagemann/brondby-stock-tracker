@@ -10,6 +10,9 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+from sqlalchemy import create_engine
+from models import Base
+from config import Config
 
 def run_api():
     """Run the FastAPI server"""
@@ -23,10 +26,22 @@ def run_dashboard():
     time.sleep(3)
     subprocess.run([sys.executable, "dashboard.py"])
 
+def init_database():
+    """Initialize database tables"""
+    try:
+        engine = create_engine(Config.DATABASE_URL)
+        Base.metadata.create_all(engine)
+        print("✅ Database initialized")
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+
 def main():
     """Main entry point for Replit"""
     print("🏟️  Brøndby IF Stock Tracker - Replit Edition")
     print("=" * 50)
+    
+    # Initialize database first
+    init_database()
     
     # Check if we're in Replit
     if os.getenv('REPL_ID'):
