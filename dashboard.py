@@ -64,60 +64,7 @@ app.layout = html.Div([
         )
     ], style={'textAlign': 'center', 'margin': '20px'}),
     
-    # News Filtering and Sorting Controls
-    html.Div([
-        html.H4("News Controls", style={'textAlign': 'center', 'marginBottom': '15px'}),
-        html.Div([
-            # Sentiment Filter
-            html.Div([
-                html.Label("Filter by Sentiment:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                dcc.Dropdown(
-                    id='sentiment-filter',
-                    options=[
-                        {'label': 'All Sentiments', 'value': 'all'},
-                        {'label': 'Positive', 'value': 'positive'},
-                        {'label': 'Negative', 'value': 'negative'},
-                        {'label': 'Neutral', 'value': 'neutral'}
-                    ],
-                    value='all',
-                    style={'width': '150px'}
-                )
-            ], style={'display': 'inline-block', 'marginRight': '20px'}),
-            
-            # Sort Order
-            html.Div([
-                html.Label("Sort Order:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                dcc.Dropdown(
-                    id='sort-order',
-                    options=[
-                        {'label': 'Newest First', 'value': 'newest'},
-                        {'label': 'Oldest First', 'value': 'oldest'},
-                        {'label': 'Most Positive', 'value': 'positive'},
-                        {'label': 'Most Negative', 'value': 'negative'}
-                    ],
-                    value='newest',
-                    style={'width': '150px'}
-                )
-            ], style={'display': 'inline-block', 'marginRight': '20px'}),
-            
-            # Refresh Button
-            html.Div([
-                html.Button(
-                    '🔄 Refresh News',
-                    id='refresh-button',
-                    n_clicks=0,
-                    style={
-                        'backgroundColor': '#2E86AB',
-                        'color': 'white',
-                        'border': 'none',
-                        'padding': '10px 20px',
-                        'borderRadius': '5px',
-                        'cursor': 'pointer'
-                    }
-                )
-            ], style={'display': 'inline-block'})
-        ], style={'textAlign': 'center', 'marginBottom': '20px'})
-    ], style={'backgroundColor': '#f8f9fa', 'padding': '15px', 'borderRadius': '10px', 'margin': '10px'}),
+
     
     # Main Content Grid
     html.Div([
@@ -147,6 +94,60 @@ app.layout = html.Div([
             # Recent News
             html.Div([
                 html.H4("Recent News"),
+                
+                # News Filtering and Sorting Controls
+                html.Div([
+                    # Sentiment Filter
+                    html.Div([
+                        html.Label("Filter by Sentiment:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'fontSize': '12px'}),
+                        dcc.Dropdown(
+                            id='sentiment-filter',
+                            options=[
+                                {'label': 'All Sentiments', 'value': 'all'},
+                                {'label': 'Positive', 'value': 'positive'},
+                                {'label': 'Negative', 'value': 'negative'},
+                                {'label': 'Neutral', 'value': 'neutral'}
+                            ],
+                            value='all',
+                            style={'width': '120px', 'fontSize': '12px'}
+                        )
+                    ], style={'display': 'inline-block', 'marginRight': '15px'}),
+                    
+                    # Sort Order
+                    html.Div([
+                        html.Label("Sort Order:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'fontSize': '12px'}),
+                        dcc.Dropdown(
+                            id='sort-order',
+                            options=[
+                                {'label': 'Newest First', 'value': 'newest'},
+                                {'label': 'Oldest First', 'value': 'oldest'},
+                                {'label': 'Most Positive', 'value': 'positive'},
+                                {'label': 'Most Negative', 'value': 'negative'}
+                            ],
+                            value='newest',
+                            style={'width': '120px', 'fontSize': '12px'}
+                        )
+                    ], style={'display': 'inline-block', 'marginRight': '15px'}),
+                    
+                    # Refresh Button
+                    html.Div([
+                        html.Button(
+                            '🔄 Refresh',
+                            id='refresh-button',
+                            n_clicks=0,
+                            style={
+                                'backgroundColor': '#2E86AB',
+                                'color': 'white',
+                                'border': 'none',
+                                'padding': '8px 15px',
+                                'borderRadius': '5px',
+                                'cursor': 'pointer',
+                                'fontSize': '12px'
+                            }
+                        )
+                    ], style={'display': 'inline-block'})
+                ], style={'textAlign': 'center', 'marginBottom': '15px', 'padding': '10px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'}),
+                
                 html.Div(id='recent-news-list', style={'maxHeight': '300px', 'overflowY': 'auto'})
             ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '10px', 'margin': '10px', 'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'}),
             

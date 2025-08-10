@@ -54,7 +54,7 @@ class NewsTracker:
             return []
     
     def get_demo_news(self):
-        """Return demo news data for testing"""
+        """Return demo news data for testing with Danish content for sentiment analysis"""
         demo_articles = [
             {
                 'title': 'Brøndby-fadæse: Ydmyget i Island',
@@ -73,28 +73,44 @@ class NewsTracker:
                 'content': 'Brøndby-direktør reagerer på de danske fans opførsel under kampen i Island.'
             },
             {
-                'title': 'Brøndby IF Announces New Stadium Expansion Plans',
-                'description': 'The Danish football club reveals ambitious plans to expand their home stadium capacity.',
-                'url': 'https://example.com/brondby-stadium',
-                'source': {'name': 'Danish Football News'},
-                'publishedAt': datetime.now(),
-                'content': 'Brøndby IF has announced plans to expand their stadium capacity to accommodate more fans.'
+                'title': 'Forløsning for Brøndby: Endelig succes',
+                'description': 'Brøndby har endelig fået den tiltrængte forløsning efter en periode med udfordringer.',
+                'url': 'https://bold.dk/fodbold/klubber/broendby-if/nyheder/forlosning-for-brondby-det-har-vaeret-svaert',
+                'source': {'name': 'Bold.dk'},
+                'publishedAt': datetime.now() - timedelta(days=1),
+                'content': 'Efter en periode med udfordringer har Brøndby endelig fået den tiltrængte forløsning. Klubben har kæmpet sig gennem vanskelighederne.'
             },
             {
-                'title': 'Brøndby IF Signs Promising Young Talent',
-                'description': 'The club secures a new promising player from the youth academy.',
-                'url': 'https://example.com/brondby-signing',
-                'source': {'name': 'Sports Denmark'},
-                'publishedAt': datetime.now() - timedelta(hours=2),
-                'content': 'Brøndby IF has signed a talented young player who shows great potential.'
+                'title': 'Brøndby kæmper sig til fantastisk sejr',
+                'description': 'Brøndby kæmpede sig til en fantastisk sejr mod rivalerne i en spændende kamp.',
+                'url': 'https://example.com/brondby-sejr',
+                'source': {'name': 'Tipsbladet'},
+                'publishedAt': datetime.now() - timedelta(hours=6),
+                'content': 'Brøndby viste stærk karakter og kæmpede sig til en fantastisk sejr. Det var en fremragende præstation.'
             },
             {
-                'title': 'Brøndby IF Prepares for Champions League Qualifiers',
-                'description': 'The team is gearing up for their upcoming European competition matches.',
-                'url': 'https://example.com/brondby-champions',
-                'source': {'name': 'European Football'},
-                'publishedAt': datetime.now() - timedelta(hours=4),
-                'content': 'Brøndby IF is preparing for their Champions League qualification matches.'
+                'title': 'Brøndby talent stråler i træning',
+                'description': 'Ungt Brøndby-talent viser lovende tegn i træning og imponerer trænerne.',
+                'url': 'https://example.com/brondby-talent',
+                'source': {'name': 'Brøndby IF'},
+                'publishedAt': datetime.now() - timedelta(hours=8),
+                'content': 'Det unge talent stråler i træning og viser fremtidig potentiale. Trænerne er begejstrede.'
+            },
+            {
+                'title': 'Brøndby møder udfordringer i transfervindue',
+                'description': 'Klubben står over for vanskelige udfordringer i det nuværende transfervindue.',
+                'url': 'https://example.com/brondby-transfer',
+                'source': {'name': 'BT Sport'},
+                'publishedAt': datetime.now() - timedelta(hours=12),
+                'content': 'Brøndby møder svære udfordringer i transfervinduet. Det bliver en vanskelig tid for klubben.'
+            },
+            {
+                'title': 'Brøndby sikrer sig vigtig sejr i pokalen',
+                'description': 'Brøndby sikrede sig en vigtig sejr i pokalturneringen og avancerede til næste runde.',
+                'url': 'https://example.com/brondby-pokal',
+                'source': {'name': 'Ekstra Bladet'},
+                'publishedAt': datetime.now() - timedelta(hours=18),
+                'content': 'Brøndby sikrede sig en afgørende sejr i pokalturneringen. Det var en vigtig dag for klubben.'
             }
         ]
         return demo_articles
