@@ -60,8 +60,25 @@ app.layout = html.Div([
                 {'label': '90 Days', 'value': 90}
             ],
             value=7,
-            style={'width': '200px', 'margin': '0 auto', 'marginBottom': '20px'}
-        )
+            style={'width': '200px', 'margin': '0 auto', 'marginBottom': '10px'}
+        ),
+        
+        # Chart News Filter
+        html.Div([
+            html.Label("Show News on Chart:", style={'fontWeight': 'bold', 'marginRight': '10px'}),
+            dcc.Dropdown(
+                id='chart-news-filter',
+                options=[
+                    {'label': 'All News', 'value': 'all'},
+                    {'label': 'Positive Only', 'value': 'positive'},
+                    {'label': 'Negative Only', 'value': 'negative'},
+                    {'label': 'Neutral Only', 'value': 'neutral'},
+                    {'label': 'No News', 'value': 'none'}
+                ],
+                value='all',
+                style={'width': '150px', 'display': 'inline-block'}
+            )
+        ], style={'textAlign': 'center', 'marginBottom': '20px'})
     ], style={'textAlign': 'center', 'margin': '20px'}),
     
 
@@ -145,8 +162,29 @@ app.layout = html.Div([
                                 'fontSize': '12px'
                             }
                         )
+                    ], style={'display': 'inline-block', 'marginRight': '15px'}),
+                    
+                    # News Refresh Button
+                    html.Div([
+                        html.Button(
+                            '📰 Refresh News',
+                            id='refresh-news-button',
+                            n_clicks=0,
+                            style={
+                                'backgroundColor': '#28a745',
+                                'color': 'white',
+                                'border': 'none',
+                                'padding': '8px 15px',
+                                'borderRadius': '5px',
+                                'cursor': 'pointer',
+                                'fontSize': '12px'
+                            }
+                        )
                     ], style={'display': 'inline-block'})
                 ], style={'textAlign': 'center', 'marginBottom': '15px', 'padding': '10px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'}),
+                
+                # News Refresh Status
+                html.Div(id='news-refresh-status', style={'marginBottom': '10px'}),
                 
                 html.Div(id='recent-news-list', style={'maxHeight': '300px', 'overflowY': 'auto'})
             ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '10px', 'margin': '10px', 'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'}),
@@ -199,15 +237,19 @@ def update_current_price(n_clicks, n_intervals):
     Output('stock-price-chart', 'figure'),
     [Input('global-timeframe-dropdown', 'value'),
      Input('refresh-button', 'n_clicks'),
-     Input('interval-component', 'n_intervals')]
+     Input('interval-component', 'n_intervals'),
+     Input('refresh-news-button', 'n_clicks'),
+     Input('chart-news-filter', 'value')]
 )
-def update_stock_chart(days, n_clicks, n_intervals):
+def update_stock_chart(days, n_clicks, n_intervals, news_clicks, news_filter):
     data = get_api_data(f'/stock/history?days={days}')
     if data and data.get('data'):
         df = pd.DataFrame(data['data'])
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         
         fig = go.Figure()
+        
+        # Add stock price line
         fig.add_trace(go.Scatter(
             x=df['timestamp'],
             y=df['price'],
@@ -217,12 +259,140 @@ def update_stock_chart(days, n_clicks, n_intervals):
             marker=dict(size=4)
         ))
         
+        # Add news markers (only if not filtered out)
+        if news_filter != 'none':
+            # Get news data for a wider range to ensure we have articles
+            news_hours = max(days * 24, 168)  # At least 7 days of news
+            news_data = get_api_data(f'/news/recent?hours={news_hours}')
+            
+            if news_data and news_data.get('articles'):
+                articles = news_data['articles']
+                logger.info(f"Found {len(articles)} articles for chart markers")
+                
+                # Filter articles based on sentiment
+                if news_filter != 'all':
+                    articles = [article for article in articles if article.get('sentiment_label') == news_filter]
+                    logger.info(f"After sentiment filter: {len(articles)} articles")
+                
+                # Prepare news data for markers
+                news_dates = []
+                news_prices = []
+                news_titles = []
+                news_sentiments = []
+                news_colors = []
+                
+                # Get stock date range for filtering
+                stock_start_date = df['timestamp'].min()
+                stock_end_date = df['timestamp'].max()
+                
+                # Group articles by date to avoid overlapping markers
+                articles_by_date = {}
+                
+                for article in articles:
+                    try:
+                        # Convert timestamp to datetime and handle timezone
+                        article_date = pd.to_datetime(article['timestamp'])
+                        
+                        # If article_date is naive (no timezone), localize it to match stock data
+                        if article_date.tz is None:
+                            # Assume the same timezone as stock data
+                            article_date = article_date.tz_localize(stock_start_date.tz)
+                        
+                        # Only include articles within the stock chart date range
+                        if stock_start_date <= article_date <= stock_end_date:
+                            # Group by date (day only) to avoid overlapping markers
+                            date_key = article_date.date()
+                            if date_key not in articles_by_date:
+                                articles_by_date[date_key] = []
+                            articles_by_date[date_key].append(article)
+                                
+                    except Exception as e:
+                        logger.error(f"Error processing news article for chart: {e}")
+                        continue
+                
+                # Process one article per date to avoid overlapping markers
+                for date_key, date_articles in articles_by_date.items():
+                    # Take the first article from each date (or the most recent one)
+                    article = date_articles[0]  # You could sort by timestamp here if needed
+                    
+                    try:
+                        article_date = pd.to_datetime(article['timestamp'])
+                        
+                        # If article_date is naive (no timezone), localize it to match stock data
+                        if article_date.tz is None:
+                            # Assume the same timezone as stock data
+                            article_date = article_date.tz_localize(stock_start_date.tz)
+                        
+                        # Find closest stock price for this date
+                        closest_idx = (df['timestamp'] - article_date).abs().idxmin()
+                        closest_price = df.loc[closest_idx, 'price']
+                        
+                        news_dates.append(article_date)
+                        news_prices.append(closest_price)
+                        
+                        # Create a combined title for multiple articles on the same day
+                        if len(date_articles) > 1:
+                            title = f"{len(date_articles)} news articles on {date_key}"
+                        else:
+                            title = article['title']
+                        news_titles.append(title)
+                        
+                        # Map sentiment to numeric value for color scale
+                        sentiment = article.get('sentiment_label', 'neutral')
+                        if sentiment == 'positive':
+                            news_sentiments.append(1)
+                            news_colors.append('#28a745')  # Green
+                        elif sentiment == 'negative':
+                            news_sentiments.append(-1)
+                            news_colors.append('#dc3545')  # Red
+                        else:
+                            news_sentiments.append(0)
+                            news_colors.append('#ffc107')  # Yellow
+                            
+                    except Exception as e:
+                        logger.error(f"Error processing grouped article for chart: {e}")
+                        continue
+                
+                logger.info(f"Added {len(news_dates)} news markers to chart")
+                
+                if news_dates:
+                    # Add news markers
+                    fig.add_trace(go.Scatter(
+                        x=news_dates,
+                        y=news_prices,
+                        mode='markers',
+                        name=f'News Events ({len(news_dates)})',
+                        marker=dict(
+                            size=16,  # Increased size for better visibility
+                            color=news_colors,
+                            symbol='diamond',
+                            line=dict(color='white', width=2),
+                            opacity=0.8
+                        ),
+                        text=news_titles,
+                        hovertemplate='<b>%{text}</b><br>Date: %{x}<br>Price: €%{y:.2f}<extra></extra>',
+                        showlegend=True
+                    ))
+                    
+                    logger.info(f"Added {len(news_dates)} news markers at dates: {[d.strftime('%Y-%m-%d') for d in news_dates]}")
+                else:
+                    logger.info("No news markers added - no articles in date range")
+            else:
+                logger.info("No news data available for chart markers")
+        
         fig.update_layout(
             title=f"Brøndby IF Stock Price - Last {days} Days",
             xaxis_title="Date",
             yaxis_title="Price (€)",
             hovermode='x unified',
-            template='plotly_white'
+            template='plotly_white',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
         )
         
         return fig
@@ -300,16 +470,49 @@ def update_sentiment_chart(days, n_clicks, n_intervals):
     
     return go.Figure()
 
-# Callback to update recent news
+# Combined callback to update recent news and handle refresh
 @app.callback(
-    Output('recent-news-list', 'children'),
+    [Output('news-refresh-status', 'children'),
+     Output('recent-news-list', 'children')],
     [Input('global-timeframe-dropdown', 'value'),
      Input('sentiment-filter', 'value'),
      Input('sort-order', 'value'),
      Input('refresh-button', 'n_clicks'),
-     Input('interval-component', 'n_intervals')]
+     Input('refresh-news-button', 'n_clicks'),
+     Input('interval-component', 'n_intervals')],
+    prevent_initial_call=False
 )
-def update_recent_news(days, sentiment_filter, sort_order, n_clicks, n_intervals):
+def update_recent_news_and_refresh(days, sentiment_filter, sort_order, refresh_clicks, news_refresh_clicks, n_intervals):
+    # Check if this was triggered by the news refresh button
+    ctx = dash.callback_context
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+    
+    status = ""
+    
+    # If news refresh button was clicked, try to refresh news
+    if triggered_id == 'refresh-news-button' and news_refresh_clicks:
+        try:
+            # Call the news update API
+            response = requests.post(f"{API_BASE_URL}/update/news")
+            
+            if response.status_code == 200:
+                data = response.json()
+                articles_saved = data.get('articles_saved', 0)
+                status = html.Div([
+                    html.P(f"✅ News refreshed successfully! {articles_saved} new articles saved.", 
+                          style={'color': '#28a745', 'fontSize': '12px', 'fontWeight': 'bold'})
+                ])
+            else:
+                status = html.Div([
+                    html.P(f"❌ Failed to refresh news. Status: {response.status_code}", 
+                          style={'color': '#dc3545', 'fontSize': '12px', 'fontWeight': 'bold'})
+                ])
+        except Exception as e:
+            status = html.Div([
+                html.P(f"❌ Error refreshing news: {str(e)}", 
+                      style={'color': '#dc3545', 'fontSize': '12px', 'fontWeight': 'bold'})
+            ])
+    
     # Convert days to hours for news API
     hours = days * 24
     data = get_api_data(f'/news/recent?hours={hours}')
@@ -371,11 +574,11 @@ def update_recent_news(days, sentiment_filter, sort_order, n_clicks, n_intervals
                 html.P(f"Showing {len(articles)} {sentiment_filter} articles", 
                       style={'fontSize': '12px', 'color': '#666', 'fontStyle': 'italic'})
             ])
-            return [summary] + news_items
+            return status, [summary] + news_items
         
-        return news_items
+        return status, news_items
     
-    return [html.P("No recent news available")]
+    return status, [html.P("No recent news available")]
 
 # Callback to update insights
 @app.callback(
@@ -402,6 +605,8 @@ def update_insights(n_clicks, n_intervals):
         return insight_items
     
     return [html.P("No insights available")]
+
+
 
 # Run the app
 if __name__ == '__main__':

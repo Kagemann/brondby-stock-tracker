@@ -510,7 +510,7 @@ class NewsTracker:
             # Clean text and convert to lowercase
             text = re.sub(r'[^\w\sæøåÆØÅ]', ' ', text).lower()
             
-            # Danish positive keywords
+            # Enhanced Danish positive keywords for football context
             positive_keywords = [
                 'sejr', 'vinder', 'vandt', 'fantastisk', 'fantastiske', 'stor', 'store', 'god', 'gode',
                 'glad', 'glade', 'lykkelig', 'lykkelige', 'fremragende', 'perfekt', 'perfekte',
@@ -519,14 +519,30 @@ class NewsTracker:
                 'champions league', 'europa league', 'pokal', 'trofæ', 'trofæer',
                 'mål', 'målscorer', 'assist', 'assister', 'clean sheet', 'nulstilling',
                 'forløsning', 'forløsende', 'tiltrængt', 'vigtig', 'vigtige', 'afgørende',
-                'kæmpe', 'kæmper', 'kæmpede', 'kæmpet', 'kæmper', 'kæmper', 'kæmper',
+                'kæmpe', 'kæmper', 'kæmpede', 'kæmpet', 'stråler', 'strålende', 'brilliant', 'brilliante', 
+                'genial', 'geniale', 'talent', 'talenter', 'lovende', 'fremtid', 'fremtidig', 'fremtidige',
+                'begejstret', 'begejstrede', 'imponerer', 'imponerende', 'fremragende', 'fremragende',
+                'stor', 'store', 'god', 'gode', 'godt', 'lykkelig', 'lykkelige', 'glad', 'glade',
+                'succes', 'succesfuld', 'succesfulde', 'fremgang', 'fremgangsrig', 'fremgangsrige',
+                'vigtig', 'vigtige', 'afgørende', 'kæmpe', 'kæmper', 'kæmpede', 'kæmpet',
                 'stråler', 'strålende', 'brilliant', 'brilliante', 'genial', 'geniale',
-                'talent', 'talenter', 'lovende', 'fremtid', 'fremtidig', 'fremtidige'
+                'talent', 'talenter', 'lovende', 'fremtid', 'fremtidig', 'fremtidige',
+                'sikrer', 'sikret', 'sikrede', 'avancerede', 'avancere', 'avancerer'
             ]
             
-            # Danish negative keywords
+            # Enhanced Danish negative keywords for football context
             negative_keywords = [
                 'nederlag', 'taber', 'tabte', 'dårlig', 'dårlige', 'skuffende', 'skuffet',
+                'ydmygelse', 'ydmyget', 'ydmygende', 'fadæse', 'katastrofe', 'katastrofal',
+                'mareridt', 'mareridts', 'problem', 'problemer', 'krise', 'kriser',
+                'svag', 'svage', 'svært', 'vanskelig', 'vanskelige', 'udfordring',
+                'udfordringer', 'mistillid', 'mistillid', 'kritik', 'kritiserer',
+                'ballade', 'hærværk', 'boykot', 'boykotter', 'protest', 'protester',
+                'skandale', 'skandaler', 'skuffelse', 'skuffet', 'frustreret',
+                'vred', 'vrede', 'rasende', 'forarget', 'forargelse', 'skam',
+                'pinlig', 'pinlige', 'flov', 'flove', 'bange', 'bekymret', 'bekymringer',
+                'svære', 'svært', 'vanskelig', 'vanskelige', 'udfordring', 'udfordringer',
+                'ryggen mod muren', 'skuffede', 'skuffet', 'skuffende', 'skuffelse',
                 'ydmygelse', 'ydmyget', 'ydmygende', 'fadæse', 'katastrofe', 'katastrofal',
                 'mareridt', 'mareridts', 'problem', 'problemer', 'krise', 'kriser',
                 'svag', 'svage', 'svært', 'vanskelig', 'vanskelige', 'udfordring',
@@ -541,25 +557,29 @@ class NewsTracker:
             positive_count = sum(1 for word in positive_keywords if word in text)
             negative_count = sum(1 for word in negative_keywords if word in text)
             
-            # Calculate sentiment score (-1 to 1)
+            # Calculate sentiment score (-1 to 1) with more weight for keyword matches
             total_words = len(text.split())
             if total_words > 0:
-                positive_ratio = positive_count / total_words
-                negative_ratio = negative_count / total_words
+                # Give more weight to keyword matches relative to text length
+                positive_ratio = (positive_count * 2) / total_words  # Double weight for positive
+                negative_ratio = (negative_count * 2) / total_words  # Double weight for negative
                 sentiment_score = positive_ratio - negative_ratio
             else:
                 sentiment_score = 0.0
             
-            # Categorize sentiment with more nuanced thresholds
-            if sentiment_score > 0.005:  # More sensitive threshold
+            # Much more sensitive thresholds for better detection
+            if sentiment_score > 0.001:  # Very sensitive threshold
                 sentiment_label = 'positive'
-            elif sentiment_score < -0.005:
+            elif sentiment_score < -0.001:
                 sentiment_label = 'negative'
             else:
                 sentiment_label = 'neutral'
             
-            # Log for debugging
-            logger.debug(f"Sentiment analysis: score={sentiment_score:.4f}, label={sentiment_label}, positive={positive_count}, negative={negative_count}")
+            # Enhanced logging for debugging
+            logger.info(f"Sentiment analysis for text: '{text[:100]}...'")
+            logger.info(f"Score: {sentiment_score:.4f}, Label: {sentiment_label}")
+            logger.info(f"Positive matches: {positive_count}, Negative matches: {negative_count}")
+            logger.info(f"Total words: {total_words}")
                 
             return sentiment_score, sentiment_label
             
